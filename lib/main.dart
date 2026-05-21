@@ -55,6 +55,10 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
   DateTime _lastResetTime = DateTime.now();
   Timer? _timer;
 
+  final Map<String, Offset> _heroAnimationOffsets = {};
+  final Set<String> _animatingHeroes = {};
+  static const Duration _heroAnimationDuration = Duration(milliseconds: 320);
+
   @override
   void initState() {
     super.initState();
@@ -103,14 +107,46 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
   }
 
   void _toggleHero(String hero) {
+    if (_animatingHeroes.contains(hero)) return;
+
+    final isComplete = _completedHeroes.contains(hero);
+    final direction = isComplete ? const Offset(-1.0, 0) : const Offset(1.0, 0);
+    _animatingHeroes.add(hero);
+    _heroAnimationOffsets[hero] = Offset.zero;
+
     setState(() {
-      if (_completedHeroes.contains(hero)) {
-        _completedHeroes.remove(hero);
-      } else {
-        _completedHeroes.add(hero);
-      }
+      _heroAnimationOffsets[hero] = direction;
     });
-    _saveCompletedState();
+
+    Future.delayed(_heroAnimationDuration, () {
+      if (!mounted) return;
+
+      setState(() {
+        if (isComplete) {
+          _completedHeroes.remove(hero);
+        } else {
+          _completedHeroes.add(hero);
+        }
+        _heroAnimationOffsets[hero] = -direction;
+      });
+
+      _saveCompletedState();
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _heroAnimationOffsets[hero] = Offset.zero;
+        });
+      });
+
+      Future.delayed(_heroAnimationDuration, () {
+        if (!mounted) return;
+        setState(() {
+          _animatingHeroes.remove(hero);
+          _heroAnimationOffsets.remove(hero);
+        });
+      });
+    });
   }
 
   void _resetChallenge() {
@@ -239,62 +275,73 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
 
   Widget _buildHeroTile(String hero) {
     final isComplete = _completedHeroes.contains(hero);
-    
-    return InkWell(
-      onTap: () => _toggleHero(hero),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: isComplete 
-              ? Theme.of(context).colorScheme.primaryContainer 
-              : Theme.of(context).colorScheme.surfaceContainerHighest,
+    final offset = _heroAnimationOffsets[hero] ?? Offset.zero;
+    final isAnimating = _animatingHeroes.contains(hero);
+
+    return AnimatedSlide(
+      key: ValueKey(hero),
+      offset: offset,
+      duration: _heroAnimationDuration,
+      curve: Curves.easeInOut,
+      child: AnimatedOpacity(
+        duration: _heroAnimationDuration,
+        opacity: isAnimating ? 0.95 : 1.0,
+        child: InkWell(
+          onTap: () => _toggleHero(hero),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isComplete 
-                ? Theme.of(context).colorScheme.primary 
-                : Colors.transparent,
-            width: 2,
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // New Image Asset with automatic text fallback
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.asset(
-                _getHeroAssetPath(hero),
-                width: 56,
-                height: 56,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return CircleAvatar(
-                    radius: 28,
-                    backgroundColor: isComplete 
-                        ? Theme.of(context).colorScheme.primary 
-                        : Theme.of(context).colorScheme.secondary,
-                    child: Text(
-                      hero.substring(0, 1),
-                      style: TextStyle(
-                        color: isComplete 
-                            ? Theme.of(context).colorScheme.onPrimary 
-                            : Theme.of(context).colorScheme.onSecondary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  );
-                },
+          child: Container(
+            decoration: BoxDecoration(
+              color: isComplete 
+                  ? Theme.of(context).colorScheme.primaryContainer 
+                  : Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isComplete 
+                    ? Theme.of(context).colorScheme.primary 
+                    : Colors.transparent,
+                width: 2,
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              hero,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.asset(
+                    _getHeroAssetPath(hero),
+                    width: 56,
+                    height: 56,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return CircleAvatar(
+                        radius: 28,
+                        backgroundColor: isComplete 
+                            ? Theme.of(context).colorScheme.primary 
+                            : Theme.of(context).colorScheme.secondary,
+                        child: Text(
+                          hero.substring(0, 1),
+                          style: TextStyle(
+                            color: isComplete 
+                                ? Theme.of(context).colorScheme.onPrimary 
+                                : Theme.of(context).colorScheme.onSecondary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  hero,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
