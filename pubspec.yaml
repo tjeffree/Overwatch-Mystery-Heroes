@@ -2,3 +2,6 @@ dependencies:
   flutter:
     sdk: flutter
   shared_preferences: ^2.2.2 # Check for the latest version
+
+environment:
+  sdk: '^3.12.0'
