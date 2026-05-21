@@ -1,7 +1,21 @@
+name: overwatch_mystery_heroes
+description: "A minimalist tracker for the Overwatch Mystery Heroes Ult Challenge."
+publish_to: 'none'
+version: 1.0.0+1
+
+# Add this section right here:
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
 dependencies:
   flutter:
     sdk: flutter
-  shared_preferences: ^2.2.2 # Check for the latest version
+  shared_preferences: ^2.2.2
 
-environment:
-  sdk: '^3.12.0'
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
