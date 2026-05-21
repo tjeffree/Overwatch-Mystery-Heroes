@@ -20,6 +20,9 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Set for web
+        run: flutter create . --platforms web
+
       - name: Build Web App
         run: flutter build web --base-href "/Overwatch-Mystery-Heroes/"
 
