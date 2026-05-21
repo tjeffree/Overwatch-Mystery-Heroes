@@ -259,21 +259,31 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Placeholder for an actual image avatar. 
-            // Replace with Image.network or Image.asset if you add assets.
-            CircleAvatar(
-              radius: 24,
-              backgroundColor: isComplete 
-                  ? Theme.of(context).colorScheme.primary 
-                  : Theme.of(context).colorScheme.secondary,
-              child: Text(
-                hero.substring(0, 1),
-                style: TextStyle(
-                  color: isComplete 
-                      ? Theme.of(context).colorScheme.onPrimary 
-                      : Theme.of(context).colorScheme.onSecondary,
-                  fontWeight: FontWeight.bold,
-                ),
+            // New Image Asset with automatic text fallback
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                _getHeroAssetPath(hero),
+                width: 56,
+                height: 56,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return CircleAvatar(
+                    radius: 28,
+                    backgroundColor: isComplete 
+                        ? Theme.of(context).colorScheme.primary 
+                        : Theme.of(context).colorScheme.secondary,
+                    child: Text(
+                      hero.substring(0, 1),
+                      style: TextStyle(
+                        color: isComplete 
+                            ? Theme.of(context).colorScheme.onPrimary 
+                            : Theme.of(context).colorScheme.onSecondary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
             const SizedBox(height: 8),
@@ -288,5 +298,17 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
         ),
       ),
     );
+  }
+
+  String _getHeroAssetPath(String hero) {
+    String name = hero.toLowerCase();
+    
+    // Convert accented letters to standard alphanumeric variants
+    name = name.replaceAll('ú', 'u').replaceAll('ö', 'o');
+    
+    // Strip out spaces, dots, colons, and hyphens (e.g., "d.va" -> "dva")
+    name = name.replaceAll(RegExp(r'[^a-z0-9]'), '');
+    
+    return 'assets/$name.webp';
   }
 }
