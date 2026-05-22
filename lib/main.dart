@@ -342,7 +342,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
     final localModifiedStr = prefs.getString('lastModified');
     final localModified = localModifiedStr != null
         ? DateTime.parse(localModifiedStr)
-        : DateTime.now();
+        : DateTime.fromMillisecondsSinceEpoch(0);
 
     if (localCompleted == null && localResetTimeStr == null) return;
 
