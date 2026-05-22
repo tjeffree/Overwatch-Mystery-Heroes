@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
-
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: const FirebaseOptions(
@@ -53,23 +52,25 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
   // Full 51-Hero Roster (Updated for 2026)
   final List<String> _allHeroes = [
     // Tanks (14)
-    'D.Va', 'Domina', 'Doomfist', 'Hazard', 'Junker Queen', 'Mauga', 'Orisa', 
-    'Ramattra', 'Reinhardt', 'Roadhog', 'Sigma', 'Winston', 'Wrecking Ball', 'Zarya',
-    
+    'D.Va', 'Domina', 'Doomfist', 'Hazard', 'Junker Queen', 'Mauga', 'Orisa',
+    'Ramattra', 'Reinhardt', 'Roadhog', 'Sigma', 'Winston', 'Wrecking Ball',
+    'Zarya',
+
     // Damage (23)
-    'Anran', 'Ashe', 'Bastion', 'Cassidy', 'Echo', 'Emre', 'Freja', 'Genji', 
-    'Hanzo', 'Junkrat', 'Mei', 'Pharah', 'Reaper', 'Sierra', 'Sojourn', 
-    'Soldier: 76', 'Sombra', 'Symmetra', 'Torbjörn', 'Tracer', 'Vendetta', 
+    'Anran', 'Ashe', 'Bastion', 'Cassidy', 'Echo', 'Emre', 'Freja', 'Genji',
+    'Hanzo', 'Junkrat', 'Mei', 'Pharah', 'Reaper', 'Sierra', 'Sojourn',
+    'Soldier: 76', 'Sombra', 'Symmetra', 'Torbjörn', 'Tracer', 'Vendetta',
     'Venture', 'Widowmaker',
-    
+
     // Support (14)
-    'Ana', 'Baptiste', 'Brigitte', 'Illari', 'Jetpack Cat', 'Juno', 'Kiriko', 
+    'Ana', 'Baptiste', 'Brigitte', 'Illari', 'Jetpack Cat', 'Juno', 'Kiriko',
     'Lifeweaver', 'Lúcio', 'Mercy', 'Mizuki', 'Moira', 'Wuyang', 'Zenyatta'
   ];
 
   Set<String> _completedHeroes = {};
   DateTime _lastResetTime = DateTime.now();
-  DateTime _lastModified = DateTime.now();
+  DateTime _lastModified = DateTime.fromMillisecondsSinceEpoch(0);
+  bool _localStateLoaded = false;
   Timer? _timer;
   User? _user;
   StreamSubscription<User?>? _authSubscription;
@@ -95,7 +96,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
         _loadStateFromFirebase(user.uid);
       }
     });
-    
+
     // Update the UI every minute to keep the timer accurate
     _timer = Timer.periodic(const Duration(minutes: 1), (_) {
       setState(() {});
@@ -111,24 +112,32 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
 
   Future<void> _loadState() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     final completed = prefs.getStringList('completedHeroes');
     final resetTimeStr = prefs.getString('lastResetTime');
     final lastModifiedStr = prefs.getString('lastModified');
 
+    bool hasLocalState = false;
+
     setState(() {
       if (completed != null) {
         _completedHeroes = completed.toSet();
+        hasLocalState = true;
       }
       if (resetTimeStr != null) {
         _lastResetTime = DateTime.parse(resetTimeStr);
+        hasLocalState = true;
       } else {
         // First launch initialization
         _saveResetTime(_lastResetTime);
       }
-      _lastModified = lastModifiedStr != null
-          ? DateTime.parse(lastModifiedStr)
-          : DateTime.now();
+      if (lastModifiedStr != null) {
+        _lastModified = DateTime.parse(lastModifiedStr);
+        hasLocalState = true;
+      } else {
+        _lastModified = DateTime.fromMillisecondsSinceEpoch(0);
+      }
+      _localStateLoaded = hasLocalState;
     });
   }
 
@@ -212,7 +221,8 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Reset Challenge?'),
-        content: const Text('This will move all heroes back to "In Progress" and reset your timer.'),
+        content: const Text(
+            'This will move all heroes back to "In Progress" and reset your timer.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -240,7 +250,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
     final duration = DateTime.now().difference(_lastResetTime);
     final days = duration.inDays;
     final hours = duration.inHours.remainder(24);
-    
+
     if (days > 0) {
       return '${days}d ${hours}h';
     } else {
@@ -250,15 +260,16 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
 
   Future<void> _signInWithGoogle() async {
     GoogleAuthProvider authProvider = GoogleAuthProvider();
-    
+
     try {
-      final userCredential = await FirebaseAuth.instance.signInWithPopup(authProvider);
+      final userCredential =
+          await FirebaseAuth.instance.signInWithPopup(authProvider);
       final user = userCredential.user;
-      
+
       if (user != null) {
         // Run the migration first to catch legacy data
         await _migrateLocalToFirebase(user.uid);
-        
+
         // Pull down the clean cloud data (whether it was just migrated or already existed)
         await _loadStateFromFirebase(user.uid);
       }
@@ -278,14 +289,11 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return; // Don't save if not logged in
 
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .set({
-          'completedHeroes': _completedHeroes.toList(),
-          'lastResetTime': _lastResetTime.toIso8601String(),
-          'lastModified': _lastModified.toIso8601String(),
-        }, SetOptions(merge: true)); // Merge prevents overwriting unrelated fields
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+      'completedHeroes': _completedHeroes.toList(),
+      'lastResetTime': _lastResetTime.toIso8601String(),
+      'lastModified': _lastModified.toIso8601String(),
+    }, SetOptions(merge: true)); // Merge prevents overwriting unrelated fields
   }
 
   Future<void> _loadStateFromFirebase(String uid) async {
@@ -294,36 +302,41 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
     final doc = await docRef.get();
     _cloudStateLoadInProgress = false;
 
-    bool cloudIsNewer = false;
+    bool shouldLoadCloud = false;
+    DateTime cloudModified = DateTime.fromMillisecondsSinceEpoch(0);
+    List<String> cloudCompleted = [];
+    DateTime cloudResetTime = _lastResetTime;
 
     if (doc.exists) {
       final data = doc.data()!;
-      final cloudCompleted = List<String>.from(data['completedHeroes'] ?? []);
-      final cloudResetTime = data['lastResetTime'] != null
+      cloudCompleted = List<String>.from(data['completedHeroes'] ?? []);
+      cloudResetTime = data['lastResetTime'] != null
           ? DateTime.parse(data['lastResetTime'])
           : DateTime.now();
-      final cloudModified = data['lastModified'] != null
+      cloudModified = data['lastModified'] != null
           ? DateTime.parse(data['lastModified'])
           : DateTime.fromMillisecondsSinceEpoch(0);
 
-      cloudIsNewer = cloudModified.isAfter(_lastModified);
-      if (cloudIsNewer) {
-        setState(() {
-          _completedHeroes = cloudCompleted.toSet();
-          _lastResetTime = cloudResetTime;
-          _lastModified = cloudModified;
-        });
-      }
+      shouldLoadCloud =
+          !_localStateLoaded || cloudModified.isAfter(_lastModified);
     }
 
-    if (!cloudIsNewer) {
+    if (shouldLoadCloud) {
+      setState(() {
+        _completedHeroes = cloudCompleted.toSet();
+        _lastResetTime = cloudResetTime;
+        _lastModified = cloudModified;
+        _localStateLoaded = true;
+      });
+      await _saveLocalState();
+    } else if (_localStateLoaded) {
       await _saveStateToFirebase();
     }
   }
 
   Future<void> _migrateLocalToFirebase(String uid) async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     final localCompleted = prefs.getStringList('completedHeroes');
     final localResetTimeStr = prefs.getString('lastResetTime');
     final localModifiedStr = prefs.getString('lastModified');
@@ -335,9 +348,10 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
 
     final docRef = FirebaseFirestore.instance.collection('users').doc(uid);
     final docSnapshot = await docRef.get();
-    final cloudModified = docSnapshot.exists && docSnapshot.data()?['lastModified'] != null
-        ? DateTime.parse(docSnapshot.data()!['lastModified'] as String)
-        : DateTime.fromMillisecondsSinceEpoch(0);
+    final cloudModified =
+        docSnapshot.exists && docSnapshot.data()?['lastModified'] != null
+            ? DateTime.parse(docSnapshot.data()!['lastModified'] as String)
+            : DateTime.fromMillisecondsSinceEpoch(0);
 
     if (!docSnapshot.exists || localModified.isAfter(cloudModified)) {
       await docRef.set({
@@ -350,8 +364,10 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final inProgressHeroes = _allHeroes.where((h) => !_completedHeroes.contains(h)).toList();
-    final completedHeroes = _allHeroes.where((h) => _completedHeroes.contains(h)).toList();
+    final inProgressHeroes =
+        _allHeroes.where((h) => !_completedHeroes.contains(h)).toList();
+    final completedHeroes =
+        _allHeroes.where((h) => _completedHeroes.contains(h)).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -362,7 +378,8 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
             child: Center(
               child: Text(
                 _user?.email ?? 'Guest',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
             ),
           ),
@@ -376,7 +393,8 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
             child: Center(
               child: Text(
                 'Elapsed: ${_getTimeSinceReset()}',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ),
           ),
@@ -464,13 +482,13 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
           borderRadius: BorderRadius.circular(12),
           child: Container(
             decoration: BoxDecoration(
-              color: isComplete 
-                  ? Theme.of(context).colorScheme.primaryContainer 
+              color: isComplete
+                  ? Theme.of(context).colorScheme.primaryContainer
                   : Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isComplete 
-                    ? Theme.of(context).colorScheme.primary 
+                color: isComplete
+                    ? Theme.of(context).colorScheme.primary
                     : Colors.transparent,
                 width: 2,
               ),
@@ -488,14 +506,14 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
                     errorBuilder: (context, error, stackTrace) {
                       return CircleAvatar(
                         radius: 28,
-                        backgroundColor: isComplete 
-                            ? Theme.of(context).colorScheme.primary 
+                        backgroundColor: isComplete
+                            ? Theme.of(context).colorScheme.primary
                             : Theme.of(context).colorScheme.secondary,
                         child: Text(
                           hero.substring(0, 1),
                           style: TextStyle(
-                            color: isComplete 
-                                ? Theme.of(context).colorScheme.onPrimary 
+                            color: isComplete
+                                ? Theme.of(context).colorScheme.onPrimary
                                 : Theme.of(context).colorScheme.onSecondary,
                             fontWeight: FontWeight.bold,
                           ),
@@ -508,7 +526,8 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
                 Text(
                   hero,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w500),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -522,13 +541,13 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
 
   String _getHeroAssetPath(String hero) {
     String name = hero.toLowerCase();
-    
+
     // Convert accented letters to standard alphanumeric variants
     name = name.replaceAll('ú', 'u').replaceAll('ö', 'o');
-    
+
     // Strip out spaces, dots, colons, and hyphens (e.g., "d.va" -> "dva")
     name = name.replaceAll(RegExp(r'[^a-z0-9]'), '');
-    
+
     return 'assets/$name.webp';
   }
 }
