@@ -1,8 +1,22 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+void main() async {
+
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: const FirebaseOptions(
+      apiKey: "AIzaSyArd_o7fXru3a37mSsRLwObLdp8dkwy-Ok",
+      appId: "1:224327157558:web:881bb6e167f252a1e49597",
+      messagingSenderId: "224327157558",
+      projectId: "overwatch-mystery-heroes",
+    ),
+  );
+
   runApp(const OverwatchMysteryChallengeApp());
 }
 
@@ -53,7 +67,11 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
 
   Set<String> _completedHeroes = {};
   DateTime _lastResetTime = DateTime.now();
+  DateTime _lastModified = DateTime.now();
   Timer? _timer;
+  User? _user;
+  StreamSubscription<User?>? _authSubscription;
+  bool _cloudStateLoadInProgress = false;
 
   final Map<String, Offset> _heroAnimationOffsets = {};
   final Set<String> _animatingHeroes = {};
@@ -64,6 +82,17 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
     super.initState();
     _allHeroes.sort(); // Alphabetical sorting for easy locating
     _loadState();
+
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (!mounted) return;
+      setState(() {
+        _user = user;
+      });
+
+      if (user != null) {
+        _loadStateFromFirebase(user.uid);
+      }
+    });
     
     // Update the UI every minute to keep the timer accurate
     _timer = Timer.periodic(const Duration(minutes: 1), (_) {
@@ -74,6 +103,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _authSubscription?.cancel();
     super.dispose();
   }
 
@@ -82,6 +112,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
     
     final completed = prefs.getStringList('completedHeroes');
     final resetTimeStr = prefs.getString('lastResetTime');
+    final lastModifiedStr = prefs.getString('lastModified');
 
     setState(() {
       if (completed != null) {
@@ -93,6 +124,9 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
         // First launch initialization
         _saveResetTime(_lastResetTime);
       }
+      _lastModified = lastModifiedStr != null
+          ? DateTime.parse(lastModifiedStr)
+          : DateTime.now();
     });
   }
 
@@ -104,6 +138,26 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
   Future<void> _saveResetTime(DateTime time) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('lastResetTime', time.toIso8601String());
+  }
+
+  Future<void> _saveLastModified() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('lastModified', _lastModified.toIso8601String());
+  }
+
+  Future<void> _saveLocalState() async {
+    await _saveCompletedState();
+    await _saveResetTime(_lastResetTime);
+    await _saveLastModified();
+  }
+
+  void _queueFirebaseSave() {
+    if (_user == null) return;
+    if (_cloudStateLoadInProgress) {
+      return;
+    }
+
+    _saveStateToFirebase();
   }
 
   void _toggleHero(String hero) {
@@ -130,7 +184,9 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
         _heroAnimationOffsets[hero] = -direction;
       });
 
-      _saveCompletedState();
+      _lastModified = DateTime.now();
+      _saveLocalState();
+      _queueFirebaseSave();
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -166,8 +222,9 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
                 _completedHeroes.clear();
                 _lastResetTime = DateTime.now();
               });
-              _saveCompletedState();
-              _saveResetTime(_lastResetTime);
+              _lastModified = DateTime.now();
+              _saveLocalState();
+              _queueFirebaseSave();
               Navigator.pop(context);
             },
             child: const Text('Reset'),
@@ -189,6 +246,106 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
     }
   }
 
+  Future<void> _signInWithGoogle() async {
+    GoogleAuthProvider authProvider = GoogleAuthProvider();
+    
+    try {
+      final userCredential = await FirebaseAuth.instance.signInWithPopup(authProvider);
+      final user = userCredential.user;
+      
+      if (user != null) {
+        // Run the migration first to catch legacy data
+        await _migrateLocalToFirebase(user.uid);
+        
+        // Pull down the clean cloud data (whether it was just migrated or already existed)
+        await _loadStateFromFirebase(user.uid);
+      }
+    } catch (e) {
+      print("Sign in failed: $e");
+    }
+  }
+
+  Future<void> _signOut() async {
+    await FirebaseAuth.instance.signOut();
+    setState(() {
+      _user = null;
+    });
+  }
+
+  Future<void> _saveStateToFirebase() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return; // Don't save if not logged in
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .set({
+          'completedHeroes': _completedHeroes.toList(),
+          'lastResetTime': _lastResetTime.toIso8601String(),
+          'lastModified': _lastModified.toIso8601String(),
+        }, SetOptions(merge: true)); // Merge prevents overwriting unrelated fields
+  }
+
+  Future<void> _loadStateFromFirebase(String uid) async {
+    _cloudStateLoadInProgress = true;
+    final docRef = FirebaseFirestore.instance.collection('users').doc(uid);
+    final doc = await docRef.get();
+    _cloudStateLoadInProgress = false;
+
+    bool cloudIsNewer = false;
+
+    if (doc.exists) {
+      final data = doc.data()!;
+      final cloudCompleted = List<String>.from(data['completedHeroes'] ?? []);
+      final cloudResetTime = data['lastResetTime'] != null
+          ? DateTime.parse(data['lastResetTime'])
+          : DateTime.now();
+      final cloudModified = data['lastModified'] != null
+          ? DateTime.parse(data['lastModified'])
+          : DateTime.fromMillisecondsSinceEpoch(0);
+
+      cloudIsNewer = cloudModified.isAfter(_lastModified);
+      if (cloudIsNewer) {
+        setState(() {
+          _completedHeroes = cloudCompleted.toSet();
+          _lastResetTime = cloudResetTime;
+          _lastModified = cloudModified;
+        });
+      }
+    }
+
+    if (!cloudIsNewer) {
+      await _saveStateToFirebase();
+    }
+  }
+
+  Future<void> _migrateLocalToFirebase(String uid) async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    final localCompleted = prefs.getStringList('completedHeroes');
+    final localResetTimeStr = prefs.getString('lastResetTime');
+    final localModifiedStr = prefs.getString('lastModified');
+    final localModified = localModifiedStr != null
+        ? DateTime.parse(localModifiedStr)
+        : DateTime.now();
+
+    if (localCompleted == null && localResetTimeStr == null) return;
+
+    final docRef = FirebaseFirestore.instance.collection('users').doc(uid);
+    final docSnapshot = await docRef.get();
+    final cloudModified = docSnapshot.exists && docSnapshot.data()?['lastModified'] != null
+        ? DateTime.parse(docSnapshot.data()!['lastModified'] as String)
+        : DateTime.fromMillisecondsSinceEpoch(0);
+
+    if (!docSnapshot.exists || localModified.isAfter(cloudModified)) {
+      await docRef.set({
+        'completedHeroes': localCompleted ?? [],
+        'lastResetTime': localResetTimeStr ?? DateTime.now().toIso8601String(),
+        'lastModified': localModified.toIso8601String(),
+      }, SetOptions(merge: true));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final inProgressHeroes = _allHeroes.where((h) => !_completedHeroes.contains(h)).toList();
@@ -199,7 +356,21 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
         title: const Text('Mystery Heroes Ult Challenge'),
         actions: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: Center(
+              child: Text(
+                _user?.email ?? 'Guest',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(_user == null ? Icons.login : Icons.logout),
+            tooltip: _user == null ? 'Sign in with Google' : 'Sign out',
+            onPressed: _user == null ? _signInWithGoogle : _signOut,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
             child: Center(
               child: Text(
                 'Elapsed: ${_getTimeSinceReset()}',
