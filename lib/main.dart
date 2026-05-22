@@ -50,22 +50,27 @@ class ChallengeScreen extends StatefulWidget {
 class _ChallengeScreenState extends State<ChallengeScreen> {
   // Full Overwatch 2 Roster (As of recent updates)
   // Full 51-Hero Roster (Updated for 2026)
-  final List<String> _allHeroes = [
-    // Tanks (14)
+  final List<String> _tanks = [
     'D.Va', 'Domina', 'Doomfist', 'Hazard', 'Junker Queen', 'Mauga', 'Orisa',
     'Ramattra', 'Reinhardt', 'Roadhog', 'Sigma', 'Winston', 'Wrecking Ball',
     'Zarya',
+  ];
 
-    // Damage (23)
+  final List<String> _damage = [
     'Anran', 'Ashe', 'Bastion', 'Cassidy', 'Echo', 'Emre', 'Freja', 'Genji',
     'Hanzo', 'Junkrat', 'Mei', 'Pharah', 'Reaper', 'Sierra', 'Sojourn',
     'Soldier: 76', 'Sombra', 'Symmetra', 'Torbjörn', 'Tracer', 'Vendetta',
     'Venture', 'Widowmaker',
+  ];
 
-    // Support (14)
+  final List<String> _support = [
     'Ana', 'Baptiste', 'Brigitte', 'Illari', 'Jetpack Cat', 'Juno', 'Kiriko',
     'Lifeweaver', 'Lúcio', 'Mercy', 'Mizuki', 'Moira', 'Wuyang', 'Zenyatta'
   ];
+
+  late final List<String> _allHeroes = [..._tanks, ..._damage, ..._support];
+
+  bool _sortAlphabetically = true;
 
   Set<String> _completedHeroes = {};
   DateTime _lastResetTime = DateTime.now();
@@ -83,7 +88,6 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
   @override
   void initState() {
     super.initState();
-    _allHeroes.sort(); // Alphabetical sorting for easy locating
     _loadState();
 
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
@@ -258,6 +262,34 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
     }
   }
 
+  List<String> _getDisplayHeroes() {
+    if (_sortAlphabetically) {
+      return List<String>.from(_allHeroes)..sort();
+    } else {
+      return _allHeroes;
+    }
+  }
+
+  Map<String, List<String>> _getHeroesByRole(bool inProgress) {
+    return {
+      'Tanks': _tanks
+          .where((h) => inProgress
+              ? !_completedHeroes.contains(h)
+              : _completedHeroes.contains(h))
+          .toList(),
+      'Damage': _damage
+          .where((h) => inProgress
+              ? !_completedHeroes.contains(h)
+              : _completedHeroes.contains(h))
+          .toList(),
+      'Support': _support
+          .where((h) => inProgress
+              ? !_completedHeroes.contains(h)
+              : _completedHeroes.contains(h))
+          .toList(),
+    };
+  }
+
   Future<void> _signInWithGoogle() async {
     GoogleAuthProvider authProvider = GoogleAuthProvider();
 
@@ -364,67 +396,144 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final inProgressHeroes =
-        _allHeroes.where((h) => !_completedHeroes.contains(h)).toList();
-    final completedHeroes =
-        _allHeroes.where((h) => _completedHeroes.contains(h)).toList();
+    if (_sortAlphabetically) {
+      final displayHeroes = _getDisplayHeroes();
+      final inProgressHeroes =
+          displayHeroes.where((h) => !_completedHeroes.contains(h)).toList();
+      final completedHeroes =
+          displayHeroes.where((h) => _completedHeroes.contains(h)).toList();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mystery Heroes Ult Challenge'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            child: Center(
-              child: Text(
-                _user?.email ?? 'Guest',
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Mystery Heroes Ult Challenge'),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
+              child: Center(
+                child: Text(
+                  _user?.email ?? 'Guest',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
               ),
             ),
-          ),
-          IconButton(
-            icon: Icon(_user == null ? Icons.login : Icons.logout),
-            tooltip: _user == null ? 'Sign in with Google' : 'Sign out',
-            onPressed: _user == null ? _signInWithGoogle : _signOut,
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            child: Center(
-              child: Text(
-                'Elapsed: ${_getTimeSinceReset()}',
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            IconButton(
+              icon: Icon(_user == null ? Icons.login : Icons.logout),
+              tooltip: _user == null ? 'Sign in with Google' : 'Sign out',
+              onPressed: _user == null ? _signInWithGoogle : _signOut,
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
+              child: Center(
+                child: Text(
+                  'Elapsed: ${_getTimeSinceReset()}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
               ),
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Reset Challenge',
-            onPressed: _resetChallenge,
-          ),
-        ],
-      ),
-      body: Row(
-        children: [
-          Expanded(
-            child: _buildHeroSection(
-              title: 'In Progress (${inProgressHeroes.length})',
-              heroes: inProgressHeroes,
-              isEmptyMessage: 'Challenge Complete!',
+            IconButton(
+              icon: Icon(_sortAlphabetically ? Icons.sort_by_alpha : Icons.category),
+              tooltip: _sortAlphabetically ? 'Sort by Role' : 'Sort Alphabetically',
+              onPressed: () => setState(() {
+                _sortAlphabetically = !_sortAlphabetically;
+              }),
             ),
-          ),
-          const VerticalDivider(width: 1, thickness: 1),
-          Expanded(
-            child: _buildHeroSection(
-              title: 'Complete (${completedHeroes.length})',
-              heroes: completedHeroes,
-              isEmptyMessage: 'No heroes completed yet.',
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Reset Challenge',
+              onPressed: _resetChallenge,
             ),
-          ),
-        ],
-      ),
-    );
+          ],
+        ),
+        body: Row(
+          children: [
+            Expanded(
+              child: _buildHeroSection(
+                title: 'In Progress (${inProgressHeroes.length})',
+                heroes: inProgressHeroes,
+                isEmptyMessage: 'Challenge Complete!',
+              ),
+            ),
+            const VerticalDivider(width: 1, thickness: 1),
+            Expanded(
+              child: _buildHeroSection(
+                title: 'Complete (${completedHeroes.length})',
+                heroes: completedHeroes,
+                isEmptyMessage: 'No heroes completed yet.',
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      final inProgressByRole = _getHeroesByRole(true);
+      final completedByRole = _getHeroesByRole(false);
+      final inProgressCount =
+          inProgressByRole.values.fold<int>(0, (sum, list) => sum + list.length);
+      final completedCount =
+          completedByRole.values.fold<int>(0, (sum, list) => sum + list.length);
+
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Mystery Heroes Ult Challenge'),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
+              child: Center(
+                child: Text(
+                  _user?.email ?? 'Guest',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+              ),
+            ),
+            IconButton(
+              icon: Icon(_user == null ? Icons.login : Icons.logout),
+              tooltip: _user == null ? 'Sign in with Google' : 'Sign out',
+              onPressed: _user == null ? _signInWithGoogle : _signOut,
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
+              child: Center(
+                child: Text(
+                  'Elapsed: ${_getTimeSinceReset()}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ),
+            IconButton(
+              icon: Icon(_sortAlphabetically ? Icons.sort_by_alpha : Icons.category),
+              tooltip: _sortAlphabetically ? 'Sort by Role' : 'Sort Alphabetically',
+              onPressed: () => setState(() {
+                _sortAlphabetically = !_sortAlphabetically;
+              }),
+            ),
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Reset Challenge',
+              onPressed: _resetChallenge,
+            ),
+          ],
+        ),
+        body: Row(
+          children: [
+            Expanded(
+              child: _buildHeroSectionByRole(
+                title: 'In Progress ($inProgressCount)',
+                heroesByRole: inProgressByRole,
+                isEmptyMessage: 'Challenge Complete!',
+              ),
+            ),
+            const VerticalDivider(width: 1, thickness: 1),
+            Expanded(
+              child: _buildHeroSectionByRole(
+                title: 'Complete ($completedCount)',
+                heroesByRole: completedByRole,
+                isEmptyMessage: 'No heroes completed yet.',
+              ),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   Widget _buildHeroSection({
@@ -460,6 +569,97 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
                   children: heroes.map((hero) => _buildHeroTile(hero)).toList(),
                 ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildHeroSectionByRole({
+    required String title,
+    required Map<String, List<String>> heroesByRole,
+    required String isEmptyMessage,
+  }) {
+    final totalHeroes =
+        heroesByRole.values.fold<int>(0, (sum, list) => sum + list.length);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+        ),
+        if (totalHeroes == 0)
+          Expanded(
+            child: Center(
+              child: Text(
+                isEmptyMessage,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+              ),
+            ),
+          )
+        else
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(8.0),
+              children: [
+                for (int roleIndex = 0;
+                    roleIndex < heroesByRole.entries.length;
+                    roleIndex++)
+                  _buildRoleGroup(
+                    role: heroesByRole.entries.elementAt(roleIndex).key,
+                    heroes: heroesByRole.entries.elementAt(roleIndex).value,
+                    isLast: roleIndex == heroesByRole.entries.length - 1,
+                  ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildRoleGroup({
+    required String role,
+    required List<String> heroes,
+    required bool isLast,
+  }) {
+    if (heroes.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 8.0, top: 12.0, bottom: 8.0),
+          child: Text(
+            role,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.secondary,
+                ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(left: 8.0, right: 8.0, bottom: 8.0),
+          child: Divider(
+            thickness: 1,
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+        ),
+        GridView.extent(
+          maxCrossAxisExtent: 120,
+          padding: const EdgeInsets.only(left: 8.0, right: 8.0, bottom: 8.0),
+          mainAxisSpacing: 8.0,
+          crossAxisSpacing: 8.0,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          children: heroes.map((hero) => _buildHeroTile(hero)).toList(),
+        ),
+        if (!isLast) const SizedBox(height: 8.0),
       ],
     );
   }
