@@ -15,6 +15,7 @@ void main() async {
       messagingSenderId: String.fromEnvironment('MESSAGINGSENDERID'),
       projectId: String.fromEnvironment('PROJECTID'),
       storageBucket: String.fromEnvironment('STORAGEBUCKET'),
+      authDomain: String.fromEnvironment('AUTHDOMAIN'),
     ),
   );
 
