@@ -18,13 +18,6 @@ void main() async {
     ),
   );
 
-  // Drain redirect result before any UI / listeners attach
-  try {
-    await FirebaseAuth.instance.getRedirectResult();
-  } catch (e) {
-    debugPrint('Redirect result error: $e');
-  }
-
   runApp(const OverwatchMysteryChallengeApp());
 }
 
@@ -298,10 +291,20 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
   }
 
   Future<void> _signInWithGoogle() async {
-    final authProvider = GoogleAuthProvider();
+    GoogleAuthProvider authProvider = GoogleAuthProvider();
 
     try {
-      await FirebaseAuth.instance.signInWithRedirect(authProvider);
+      final userCredential =
+          await FirebaseAuth.instance.signInWithPopup(authProvider);
+      final user = userCredential.user;
+
+      if (user != null) {
+        // Run the migration first to catch legacy data
+        await _migrateLocalToFirebase(user.uid);
+
+        // Pull down the clean cloud data (whether it was just migrated or already existed)
+        await _loadStateFromFirebase(user.uid);
+      }
     } catch (e) {
       print("Sign in failed: $e");
     }
