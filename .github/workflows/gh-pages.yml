@@ -21,7 +21,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Web App
-        run: flutter build web --base-href "/Overwatch-Mystery-Heroes/"
+        run: flutter build web --base-href "/Overwatch-Mystery-Heroes/" --dart-define=APIKEY=${{ secrets.APIKEY }} --dart-define=APPID=${{ secrets.APPID }} --dart-define=MESSAGINGSENDERID=${{ secrets.MESSAGINGSENDERID }} --dart-define=PROJECTID=${{ secrets.PROJECTID }} --dart-define=STORAGEBUCKET=${{ secrets.STORAGEBUCKET }}
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4

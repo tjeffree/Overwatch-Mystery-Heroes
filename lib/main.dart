@@ -10,10 +10,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: const FirebaseOptions(
-      apiKey: "AIzaSyArd_o7fXru3a37mSsRLwObLdp8dkwy-Ok",
-      appId: "1:224327157558:web:881bb6e167f252a1e49597",
-      messagingSenderId: "224327157558",
-      projectId: "overwatch-mystery-heroes",
+      apiKey: String.fromEnvironment('APIKEY'),
+      appId: String.fromEnvironment('APPID'),
+      messagingSenderId: String.fromEnvironment('MESSAGINGSENDERID'),
+      projectId: String.fromEnvironment('PROJECTID'),
+      storageBucket: String.fromEnvironment('STORAGEBUCKET'),
     ),
   );
 
