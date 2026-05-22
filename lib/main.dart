@@ -89,6 +89,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
   void initState() {
     super.initState();
     _loadState();
+    _handleRedirectResult();
 
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
       if (!mounted) return;
@@ -291,22 +292,25 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
   }
 
   Future<void> _signInWithGoogle() async {
-    GoogleAuthProvider authProvider = GoogleAuthProvider();
+    final authProvider = GoogleAuthProvider();
 
     try {
-      final userCredential =
-          await FirebaseAuth.instance.signInWithPopup(authProvider);
-      final user = userCredential.user;
-
-      if (user != null) {
-        // Run the migration first to catch legacy data
-        await _migrateLocalToFirebase(user.uid);
-
-        // Pull down the clean cloud data (whether it was just migrated or already existed)
-        await _loadStateFromFirebase(user.uid);
-      }
+      await FirebaseAuth.instance.signInWithRedirect(authProvider);
     } catch (e) {
       print("Sign in failed: $e");
+    }
+  }
+
+  Future<void> _handleRedirectResult() async {
+    try {
+      final result = await FirebaseAuth.instance.getRedirectResult();
+      final redirectUser = result.user;
+      if (redirectUser != null) {
+        await _migrateLocalToFirebase(redirectUser.uid);
+        await _loadStateFromFirebase(redirectUser.uid);
+      }
+    } catch (e) {
+      print("Redirect sign in result failed: $e");
     }
   }
 
