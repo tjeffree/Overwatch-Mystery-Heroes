@@ -18,6 +18,13 @@ void main() async {
     ),
   );
 
+  // Drain redirect result before any UI / listeners attach
+  try {
+    await FirebaseAuth.instance.getRedirectResult();
+  } catch (e) {
+    debugPrint('Redirect result error: $e');
+  }
+
   runApp(const OverwatchMysteryChallengeApp());
 }
 
@@ -89,7 +96,6 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
   void initState() {
     super.initState();
     _loadState();
-    _handleRedirectResult();
 
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
       if (!mounted) return;
@@ -298,19 +304,6 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
       await FirebaseAuth.instance.signInWithRedirect(authProvider);
     } catch (e) {
       print("Sign in failed: $e");
-    }
-  }
-
-  Future<void> _handleRedirectResult() async {
-    try {
-      final result = await FirebaseAuth.instance.getRedirectResult();
-      final redirectUser = result.user;
-      if (redirectUser != null) {
-        await _migrateLocalToFirebase(redirectUser.uid);
-        await _loadStateFromFirebase(redirectUser.uid);
-      }
-    } catch (e) {
-      print("Redirect sign in result failed: $e");
     }
   }
 
