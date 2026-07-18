@@ -23979,7 +23979,7 @@ $iGJ:1}
 A.ah1.prototype={
 $1(a){var s=A.cz().b
 s=s==null?null:s.canvasKitBaseUrl
-return(s==null?"https://www.gstatic.com/flutter-canvaskit/4c525dac5ebe5971c5708ef73558ed8edcf4a362/":s)+a},
+return(s==null?"https://www.gstatic.com/flutter-canvaskit/83675ed27633283e7fc296c8bca22e841224c096/":s)+a},
 $S:58}
 A.GY.prototype={
 gn(a){var s=this.a
@@ -72255,7 +72255,7 @@ M(a){var s=null
 return new A.x4(B.yP,"Mystery Heroes Tracker",A.akD(s,A.anh(B.a8,s,s,B.Fu),!0),s)}}
 A.uA.prototype={
 ap(){var s=t.s,r=t.N
-return new A.Ae(A.c(["D.Va","Domina","Doomfist","Hazard","Junker Queen","Mauga","Orisa","Ramattra","Reinhardt","Roadhog","Sigma","Winston","Wrecking Ball","Zarya"],s),A.c(["Anran","Ashe","Bastion","Cassidy","Echo","Emre","Freja","Genji","Hanzo","Junkrat","Mei","Pharah","Reaper","Sierra","Sojourn","Soldier: 76","Sombra","Symmetra","Torbj\xf6rn","Tracer","Vendetta","Venture","Widowmaker"],s),A.c(["Ana","Baptiste","Brigitte","Illari","Jetpack Cat","Juno","Kiriko","Lifeweaver","L\xfacio","Mercy","Mizuki","Moira","Wuyang","Zenyatta"],s),A.ay(r),new A.bZ(Date.now(),0,!1),new A.bZ(A.i1(0,0,!1),0,!1),A.n(r,t.o),A.ay(r))}}
+return new A.Ae(A.c(["D.Va","Domina","Doomfist","Hazard","Junker Queen","Mauga","Orisa","Ramattra","Reinhardt","Roadhog","Sigma","Winston","Wrecking Ball","Zarya"],s),A.c(["Anran","Ashe","Bastion","Cassidy","Echo","Emre","Freja","Genji","Hanzo","Junkrat","Mei","Pharah","Reaper","Shion","Sierra","Sojourn","Soldier: 76","Sombra","Symmetra","Torbj\xf6rn","Tracer","Vendetta","Venture","Widowmaker"],s),A.c(["Ana","Baptiste","Brigitte","Illari","Jetpack Cat","Juno","Kiriko","Lifeweaver","L\xfacio","Mercy","Mizuki","Moira","Wuyang","Zenyatta"],s),A.ay(r),new A.bZ(Date.now(),0,!1),new A.bZ(A.i1(0,0,!1),0,!1),A.n(r,t.o),A.ay(r))}}
 A.Ae.prototype={
 gGj(){var s,r=this,q=r.r
 if(q===$){s=A.T(r.d,t.N)
