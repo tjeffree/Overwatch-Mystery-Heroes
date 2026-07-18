@@ -58,7 +58,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
 
   final List<String> _damage = [
     'Anran', 'Ashe', 'Bastion', 'Cassidy', 'Echo', 'Emre', 'Freja', 'Genji',
-    'Hanzo', 'Junkrat', 'Mei', 'Pharah', 'Reaper', 'Sierra', 'Sojourn',
+    'Hanzo', 'Junkrat', 'Mei', 'Pharah', 'Reaper', 'Shion', 'Sierra', 'Sojourn',
     'Soldier: 76', 'Sombra', 'Symmetra', 'Torbjörn', 'Tracer', 'Vendetta',
     'Venture', 'Widowmaker',
   ];
