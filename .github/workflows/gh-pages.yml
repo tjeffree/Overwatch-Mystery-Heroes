@@ -3,7 +3,11 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - main 
+      - main
+    # Tooling and docs don't affect the built site, so don't redeploy for them.
+    paths-ignore:
+      - '.claude/**'
+      - '**.md'
 
 jobs:
   build-and-deploy:
