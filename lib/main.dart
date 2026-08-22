@@ -51,9 +51,9 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
   // Full Overwatch 2 Roster (As of recent updates)
   // Full 51-Hero Roster (Updated for 2026)
   final List<String> _tanks = [
-    'D.Va', 'Domina', 'Doomfist', 'Hazard', 'Junker Queen', 'Mauga', 'Orisa',
-    'Ramattra', 'Reinhardt', 'Roadhog', 'Sigma', 'Winston', 'Wrecking Ball',
-    'Zarya',
+    'D.Mon', 'D.Va', 'Domina', 'Doomfist', 'Hazard', 'Junker Queen', 'Mauga',
+    'Orisa', 'Ramattra', 'Reinhardt', 'Roadhog', 'Sigma', 'Winston',
+    'Wrecking Ball', 'Zarya',
   ];
 
   final List<String> _damage = [
