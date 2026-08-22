@@ -25,6 +25,10 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "..", "..", ".."))
 MAIN_DART = os.path.join(ROOT, "lib", "main.dart")
 ASSETS = os.path.join(ROOT, "assets")
+README = os.path.join(ROOT, "README.md")
+
+# README role heading -> main.dart list name
+README_ROLES = (("Tanks", "_tanks"), ("Damage", "_damage"), ("Support", "_support"))
 
 # Non-hero images that legitimately live in assets/
 NON_HERO_ASSETS = {"overwatch.png"}
@@ -63,6 +67,59 @@ def wiki_heroes():
         data = json.load(resp)
     members = {m["title"] for m in data["query"]["categorymembers"]}
     return members - {"Heroes"}  # the category page itself
+
+
+def check_readme(roster, total):
+    """README.md duplicates the roster in prose and drifts silently. Compare its
+    per-role lists and every hardcoded hero count against lib/main.dart."""
+    if not os.path.isfile(README):
+        print("  no README.md found; skipped")
+        return 0
+
+    text = io.open(README, encoding="utf-8").read()
+    problems = 0
+
+    for label, role in README_ROLES:
+        match = re.search(r"\*\*%s \((\d+)\)\*\*:\s*(.+)" % label, text)
+        if not match:
+            print("  could not find a '**%s (N)**:' line" % label)
+            problems += 1
+            continue
+
+        stated = int(match.group(1))
+        # Hero names never contain ', ' - 'Soldier: 76' splits safely
+        listed = [n.strip() for n in match.group(2).split(",") if n.strip()]
+        expected = roster[role]
+
+        if stated != len(expected):
+            print("  %s: count says (%d), roster has %d" % (label, stated, len(expected)))
+            problems += 1
+        if stated != len(listed):
+            print("  %s: count says (%d) but %d names are listed"
+                  % (label, stated, len(listed)))
+            problems += 1
+
+        absent = [h for h in expected if h not in listed]
+        extra = [h for h in listed if h not in expected]
+        if absent:
+            print("  %s: missing from README: %s" % (label, absent))
+            problems += 1
+        if extra:
+            print("  %s: in README but not in the app: %s" % (label, extra))
+            problems += 1
+
+    # Hardcoded totals: '53-hero roster', '53-Hero Roster', '(53 heroes)'
+    for pattern in (r"(\d+)-[Hh]ero\b", r"\((\d+) heroes\)"):
+        for found in re.finditer(pattern, text):
+            if int(found.group(1)) != total:
+                line = text[:found.start()].count("\n") + 1
+                print("  line %d: hardcoded count '%s' should be %d"
+                      % (line, found.group(0), total))
+                problems += 1
+
+    if problems == 0:
+        print("  README roster matches lib/main.dart")
+    return problems
 
 
 def main():
@@ -112,6 +169,19 @@ def main():
             print("  ORPHAN asset with no hero: assets/%s" % fname)
     if not missing and not orphans:
         print("  all %d heroes have a portrait; no orphans" % len(app))
+
+    # --- hardcoded count in the main.dart comment above the lists ---
+    src = io.open(MAIN_DART, encoding="utf-8").read()
+    for found in re.finditer(r"(\d+)-[Hh]ero\b", src):
+        if int(found.group(1)) != total:
+            line = src[:found.start()].count("\n") + 1
+            print("\nlib/main.dart line %d: comment says '%s', roster has %d"
+                  % (line, found.group(0), total))
+            problems += 1
+
+    # --- README ---
+    print("\nREADME.md:")
+    problems += check_readme(roster, total)
 
     # --- wiki comparison ---
     if not args.offline:

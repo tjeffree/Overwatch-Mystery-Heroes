@@ -81,18 +81,42 @@ consequence: `.` (0x2E) sorts before any letter, so `D.Mon` < `D.Va` < `Domina`,
 
 Re-wrap the list to match the surrounding style rather than leaving one long line.
 
-## 4. Verify
+## 4. Update README.md
+
+`README.md` restates the whole roster in prose, so **it is a second place the hero must be
+added** - and it drifts silently, because nothing in the app reads it. It had missed two
+consecutive heroes (Shion and D.Mon) before this was caught by eye.
+
+Four spots, all needing the new hero:
+
+- The `## 🎯 Hero Roster` section: add the name to the right `**Tanks (N)**:` /
+  `**Damage (N)**:` / `**Support (N)**:` line **and increment that line's count**. Keep
+  the same order as the source list in `lib/main.dart`.
+- Three hardcoded totals of the full roster: the `N-hero roster` bullet under *About the
+  Challenge*, the `N-Hero Roster` feature bullet, and `# Hero portrait images (N heroes)`
+  in the project-structure block.
+
+Step 5 checks all of this mechanically, so there is no need to hunt for the counts by
+hand - add the name, then let the script tell you which numbers are stale.
+
+## 5. Verify
 
 ```bash
 python .claude/skills/add-overwatch-hero/scripts/check_roster.py
 ```
 
-Cross-checks `lib/main.dart` against the wiki's live hero category and the files in
-`assets/`. Reports per-role counts, heroes on the wiki but not in the app (and vice
-versa), duplicates, heroes with no portrait file, orphan portraits, and any role list
-that has drifted out of Dart sort order (the step 3 trap). Exits non-zero on any
-mismatch. `--offline` skips the wiki call. This also answers "is the roster up to
-date?" on its own.
+Treats `lib/main.dart` as the source of truth and cross-checks everything else against
+it - the wiki's live hero category, the files in `assets/`, and `README.md`. Reports:
+
+- per-role counts and duplicate entries
+- heroes on the wiki but not in the app, and vice versa
+- heroes with no portrait file, and orphan portraits
+- role lists that have drifted out of Dart sort order (the step 3 trap)
+- README role lists and every hardcoded hero count that disagrees, by line number
+  (the step 4 trap), plus the count comment in `lib/main.dart`
+
+Exits non-zero on any mismatch. `--offline` skips the wiki call. This also answers "is
+the roster up to date?" on its own, so it's worth running even when not adding a hero.
 
 **`flutter analyze` does not run here.** The local SDK is Flutter 3.7.7 / Dart 2.19.4,
 below this project's `sdk: >=3.0.0` constraint, so `pub get` fails during analyze. Don't
@@ -100,16 +124,18 @@ read that failure as a problem with the change. CI is the compile check - the Gi
 Actions workflow uses `channel: stable`. If local verification is ever needed, that means
 upgrading the global SDK at `C:\Projects\flutter`; ask first, it's slow and machine-wide.
 
-## 5. Commit, and confirm before pushing
+## 6. Commit, and confirm before pushing
 
 One commit per hero, matching existing history (`Add Shion`, `Add D.Mon`):
 
 ```bash
-git add assets/<assetname>.webp lib/main.dart && git commit -m "Add <Hero>"
+git add assets/<assetname>.webp lib/main.dart README.md && git commit -m "Add <Hero>"
 ```
 
 **Ask before pushing.** A push to `main` fires `.github/workflows/gh-pages.yml`, which
-publishes to **mysteryheroesmashup.com** - a public deploy, not a local step.
+publishes to **mysteryheroesmashup.com** - a public deploy, not a local step. (The
+workflow ignores `.claude/**` and `**.md`, but a hero commit always touches
+`lib/main.dart` and `assets/`, so it does deploy.)
 
 After a push, confirm it actually landed rather than assuming:
 
@@ -122,9 +148,8 @@ After a push, confirm it actually landed rather than assuming:
 
 ## Notes
 
-- The comment above the role lists (`// Full 51-Hero Roster ...`) is a hardcoded count and
-  has drifted out of date. Either update it with the hero or leave it; don't trust it as
-  the roster size.
+- The comment above the role lists (`// Full 53-Hero Roster ...`) is a hardcoded count.
+  Bump it with the hero - step 5 checks it, so a stale one fails the run.
 - Running `python -c` with a multi-line inline script through the pyenv shim in Git Bash
   mangles the source and can fail with a confusing `IndentationError`. Write the script to
   a file and run it - both scripts here exist partly for that reason.

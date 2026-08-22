@@ -7,7 +7,7 @@ A minimalist Flutter web app to track your progress through the **Overwatch Myst
 The Mystery Heroes Ultimate Challenge is a personal gaming goal where you:
 
 1. **Queue for Mystery Heroes** (where you get a random hero each spawn)
-2. **Pick a random hero** from the 51-hero roster
+2. **Pick a random hero** from the 53-hero roster
 3. **Earn their Ultimate Ability** during a match
 4. **Complete the challenge** when you've landed an ultimate with that hero
 5. **Repeat** until you've mastered all heroes!
@@ -16,7 +16,7 @@ Track your progress and see how long it takes you to complete the full roster.
 
 ## ✨ Features
 
-- **51-Hero Roster**: Complete Overwatch 2 hero list with role categories (Tank, Damage, Support)
+- **53-Hero Roster**: Complete Overwatch 2 hero list with role categories (Tank, Damage, Support)
 - **Visual Hero Cards**: Each hero displays their in-game image for easy identification
 - **Progress Tracking**: Drag heroes from "In Progress" to "Complete" as you master their ultimates
 - **Timer**: Track elapsed time since your last reset
@@ -77,7 +77,7 @@ web/
   └── icons/             # App icons and favicon
 
 assets/
-  └── *.webp             # Hero portrait images (51 heroes)
+  └── *.webp             # Hero portrait images (53 heroes)
 ```
 
 ## 📝 Technologies Used
@@ -89,9 +89,9 @@ assets/
 
 ## 🎯 Hero Roster
 
-**Tanks (14)**: D.Va, Domina, Doomfist, Hazard, Junker Queen, Mauga, Orisa, Ramattra, Reinhardt, Roadhog, Sigma, Winston, Wrecking Ball, Zarya
+**Tanks (15)**: D.Mon, D.Va, Domina, Doomfist, Hazard, Junker Queen, Mauga, Orisa, Ramattra, Reinhardt, Roadhog, Sigma, Winston, Wrecking Ball, Zarya
 
-**Damage (23)**: Anran, Ashe, Bastion, Cassidy, Echo, Emre, Freja, Genji, Hanzo, Junkrat, Mei, Pharah, Reaper, Sierra, Sojourn, Soldier: 76, Sombra, Symmetra, Torbjörn, Tracer, Vendetta, Venture, Widowmaker
+**Damage (24)**: Anran, Ashe, Bastion, Cassidy, Echo, Emre, Freja, Genji, Hanzo, Junkrat, Mei, Pharah, Reaper, Shion, Sierra, Sojourn, Soldier: 76, Sombra, Symmetra, Torbjörn, Tracer, Vendetta, Venture, Widowmaker
 
 **Support (14)**: Ana, Baptiste, Brigitte, Illari, Jetpack Cat, Juno, Kiriko, Lifeweaver, Lúcio, Mercy, Mizuki, Moira, Wuyang, Zenyatta
 
