@@ -21,13 +21,18 @@ Track your progress and see how long it takes you to complete the full roster.
 - **Progress Tracking**: Drag heroes from "In Progress" to "Complete" as you master their ultimates
 - **Timer**: Track elapsed time since your last reset
 - **Persistent State**: Your progress is saved locally in your browser
+- **Optional Cloud Sync**: Sign in with Google to sync progress across devices via Firestore
 - **Reset Function**: Start fresh with a new challenge run
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Flutter SDK (3.0.0 or later)
+- Flutter SDK (3.0.0 or later) — the `pubspec.yaml` constraint is `>=3.0.0 <4.0.0`
 - Dart
+- A Firebase project (see *Firebase configuration* below)
+
+> This is a **web-only** project — only `web/` platform scaffolding is checked in, so
+> there is no mobile build target.
 
 ### Installation
 
@@ -42,28 +47,54 @@ cd Overwatch-Mystery-Heroes
 flutter pub get
 ```
 
-3. Run the app:
+3. Run the app — web only, and Firebase values must be passed in (see below):
 ```bash
-# For web
-flutter run -d chrome
-
-# For mobile
-flutter run
+flutter run -d chrome \
+  --dart-define=APIKEY=... \
+  --dart-define=APPID=... \
+  --dart-define=MESSAGINGSENDERID=... \
+  --dart-define=PROJECTID=... \
+  --dart-define=STORAGEBUCKET=... \
+  --dart-define=AUTHDOMAIN=...
 ```
+
+### Firebase configuration
+
+There is no `firebase_options.dart` in this repo. `main()` builds `FirebaseOptions` from
+compile-time environment values via `String.fromEnvironment`, so all six must be supplied
+with `--dart-define`:
+
+`APIKEY`, `APPID`, `MESSAGINGSENDERID`, `PROJECTID`, `STORAGEBUCKET`, `AUTHDOMAIN`
+
+`Firebase.initializeApp` is called unconditionally at startup and is not guarded, so
+running or building **without** these will fail to start rather than degrade gracefully.
+In CI they come from GitHub Actions repository secrets of the same names.
 
 ## 🌐 Live Demo
 
-The app is deployed to GitHub Pages and available at:
-[https://tjeffree.github.io/Overwatch-Mystery-Heroes/](https://tjeffree.github.io/Overwatch-Mystery-Heroes/)
+The app is deployed to GitHub Pages on a custom domain:
+[https://mysteryheroesmashup.com](https://mysteryheroesmashup.com)
+
+(The old `tjeffree.github.io/Overwatch-Mystery-Heroes/` address still works — it redirects
+to the custom domain.)
 
 ## 📦 Building for Production
 
 To build the web app for deployment:
 ```bash
-flutter build web --base-href "/Overwatch-Mystery-Heroes/"
+flutter build web --base-href "/" \
+  --dart-define=APIKEY=... --dart-define=APPID=... \
+  --dart-define=MESSAGINGSENDERID=... --dart-define=PROJECTID=... \
+  --dart-define=STORAGEBUCKET=... --dart-define=AUTHDOMAIN=...
 ```
 
-The build is automatically deployed to GitHub Pages via GitHub Actions on every push to `main`.
+The base href is `/` because the site is served from the root of a custom domain, not from
+a repository subpath.
+
+The build is deployed to GitHub Pages via GitHub Actions on pushes to `main`, using
+repository secrets for the Firebase values. Commits that only touch `.claude/**` or
+Markdown files are skipped by the workflow's `paths-ignore`, since they can't change the
+built output.
 
 ## 🏗️ Project Structure
 
@@ -78,6 +109,12 @@ web/
 
 assets/
   └── *.webp             # Hero portrait images (53 heroes)
+
+.github/workflows/
+  └── gh-pages.yml       # Build and deploy to GitHub Pages
+
+.claude/skills/
+  └── add-overwatch-hero/  # Workflow for adding a newly released hero
 ```
 
 ## 📝 Technologies Used
@@ -85,6 +122,8 @@ assets/
 - **Flutter**: Cross-platform UI framework
 - **Dart**: Programming language
 - **shared_preferences**: Local state persistence
+- **firebase_core / firebase_auth**: Firebase setup and Google sign-in
+- **cloud_firestore**: Cloud sync of progress for signed-in users
 - **Material 3**: Modern design system
 
 ## 🎯 Hero Roster
