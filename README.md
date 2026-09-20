@@ -18,10 +18,18 @@ Track your progress and see how long it takes you to complete the full roster.
 
 - **53-Hero Roster**: Complete Overwatch 2 hero list with role categories (Tank, Damage, Support)
 - **Visual Hero Cards**: Each hero displays their in-game image for easy identification
-- **Progress Tracking**: Drag heroes from "In Progress" to "Complete" as you master their ultimates
+- **Three Views**: cycle with the view button in the app bar —
+  - **Board** (default): the whole roster on a whiteboard in TANKS / DPS / SUPPORTS
+    columns, with a `23/53` tally on the banner. Click a portrait to grey it out as
+    complete; click again to undo.
+  - **A–Z**: In Progress and Complete side by side, alphabetically
+  - **By Role**: the same split, grouped into Tanks / Damage / Support
+- **Progress Tracking**: Tap a hero to move them between "In Progress" and "Complete"
+  as you master their ultimates. The chosen view is remembered along with your progress.
 - **Timer**: Track elapsed time since your last reset
 - **Persistent State**: Your progress is saved locally in your browser
-- **Optional Cloud Sync**: Sign in with Google to sync progress across devices via Firestore
+- **Optional Cloud Sync**: Sign in with Google to sync progress across devices via Firestore.
+  The signed-in account is never shown on screen, so the board is safe to put on stream.
 - **Reset Function**: Start fresh with a new challenge run
 
 ## 🚀 Getting Started
@@ -100,7 +108,8 @@ built output.
 
 ```
 lib/
-  └── main.dart          # Main app with all UI and state management
+  ├── main.dart          # App, state, sync, and the two list views
+  └── board_view.dart    # The whiteboard board view (layout, tiles, painters)
 
 web/
   ├── index.html         # Web entry point
@@ -108,7 +117,8 @@ web/
   └── icons/             # App icons and favicon
 
 assets/
-  └── *.webp             # Hero portrait images (53 heroes)
+  ├── *.webp             # Hero portrait images (53 heroes)
+  └── fonts/             # Permanent Marker, the handwritten face on the board
 
 .github/workflows/
   └── gh-pages.yml       # Build and deploy to GitHub Pages
@@ -137,6 +147,9 @@ assets/
 ## 📄 License
 
 This project is open source and available under the MIT License.
+
+The bundled `assets/fonts/PermanentMarker-Regular.ttf` is Permanent Marker by Font Diner,
+distributed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
 
 ## 🤝 Contributing
 

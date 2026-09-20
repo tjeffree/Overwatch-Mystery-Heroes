@@ -5,6 +5,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'board_view.dart';
+
+/// How the roster is laid out. Persisted so the choice survives a reload.
+enum ViewMode { board, alphabetical, role }
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -70,7 +75,10 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
 
   late final List<String> _allHeroes = [..._tanks, ..._damage, ..._support];
 
-  bool _sortAlphabetically = true;
+  ViewMode _viewMode = ViewMode.board;
+
+  /// Height of the transparent bar floating over the board artwork.
+  static const double _boardToolbarHeight = 52;
 
   Set<String> _completedHeroes = {};
   DateTime _lastResetTime = DateTime.now();
@@ -120,6 +128,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
     final completed = prefs.getStringList('completedHeroes');
     final resetTimeStr = prefs.getString('lastResetTime');
     final lastModifiedStr = prefs.getString('lastModified');
+    final viewModeName = prefs.getString('viewMode');
 
     bool hasLocalState = false;
 
@@ -140,6 +149,12 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
         hasLocalState = true;
       } else {
         _lastModified = DateTime.fromMillisecondsSinceEpoch(0);
+      }
+      if (viewModeName != null) {
+        _viewMode = ViewMode.values.firstWhere(
+          (mode) => mode.name == viewModeName,
+          orElse: () => ViewMode.board,
+        );
       }
       _localStateLoaded = hasLocalState;
     });
@@ -220,6 +235,55 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
     });
   }
 
+  Future<void> _saveViewMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('viewMode', _viewMode.name);
+  }
+
+  void _cycleViewMode() {
+    setState(() {
+      _viewMode =
+          ViewMode.values[(_viewMode.index + 1) % ViewMode.values.length];
+    });
+    _saveViewMode();
+  }
+
+  IconData get _viewModeIcon {
+    switch (_viewMode) {
+      case ViewMode.board:
+        return Icons.grid_view;
+      case ViewMode.alphabetical:
+        return Icons.sort_by_alpha;
+      case ViewMode.role:
+        return Icons.category;
+    }
+  }
+
+  String get _viewModeTooltip {
+    switch (_viewMode) {
+      case ViewMode.board:
+        return 'View: Board (tap for A-Z)';
+      case ViewMode.alphabetical:
+        return 'View: A-Z (tap for roles)';
+      case ViewMode.role:
+        return 'View: Roles (tap for board)';
+    }
+  }
+
+  /// Heroes never change column on the board, so there is nothing to slide:
+  /// flip the state and let the tile fade itself to grey.
+  void _toggleHeroInstant(String hero) {
+    setState(() {
+      if (!_completedHeroes.remove(hero)) {
+        _completedHeroes.add(hero);
+      }
+    });
+
+    _lastModified = DateTime.now();
+    _saveLocalState();
+    _queueFirebaseSave();
+  }
+
   void _resetChallenge() {
     showDialog(
       context: context,
@@ -262,13 +326,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
     }
   }
 
-  List<String> _getDisplayHeroes() {
-    if (_sortAlphabetically) {
-      return List<String>.from(_allHeroes)..sort();
-    } else {
-      return _allHeroes;
-    }
-  }
+  List<String> _getDisplayHeroes() => List<String>.from(_allHeroes)..sort();
 
   Map<String, List<String>> _getHeroesByRole(bool inProgress) {
     return {
@@ -396,144 +454,139 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_sortAlphabetically) {
-      final displayHeroes = _getDisplayHeroes();
-      final inProgressHeroes =
-          displayHeroes.where((h) => !_completedHeroes.contains(h)).toList();
-      final completedHeroes =
-          displayHeroes.where((h) => _completedHeroes.contains(h)).toList();
-
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Mystery Heroes Ult Challenge'),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0),
-              child: Center(
-                child: Text(
-                  _user?.email ?? 'Guest',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-              ),
-            ),
-            IconButton(
-              icon: Icon(_user == null ? Icons.login : Icons.logout),
-              tooltip: _user == null ? 'Sign in with Google' : 'Sign out',
-              onPressed: _user == null ? _signInWithGoogle : _signOut,
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0),
-              child: Center(
-                child: Text(
-                  'Elapsed: ${_getTimeSinceReset()}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-              ),
-            ),
-            IconButton(
-              icon: Icon(_sortAlphabetically ? Icons.sort_by_alpha : Icons.category),
-              tooltip: _sortAlphabetically ? 'Sort by Role' : 'Sort Alphabetically',
-              onPressed: () => setState(() {
-                _sortAlphabetically = !_sortAlphabetically;
-              }),
-            ),
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: 'Reset Challenge',
-              onPressed: _resetChallenge,
-            ),
-          ],
-        ),
-        body: Row(
-          children: [
-            Expanded(
-              child: _buildHeroSection(
-                title: 'In Progress (${inProgressHeroes.length})',
-                heroes: inProgressHeroes,
-                isEmptyMessage: 'Challenge Complete!',
-              ),
-            ),
-            const VerticalDivider(width: 1, thickness: 1),
-            Expanded(
-              child: _buildHeroSection(
-                title: 'Complete (${completedHeroes.length})',
-                heroes: completedHeroes,
-                isEmptyMessage: 'No heroes completed yet.',
-              ),
-            ),
-          ],
-        ),
-      );
-    } else {
-      final inProgressByRole = _getHeroesByRole(true);
-      final completedByRole = _getHeroesByRole(false);
-      final inProgressCount =
-          inProgressByRole.values.fold<int>(0, (sum, list) => sum + list.length);
-      final completedCount =
-          completedByRole.values.fold<int>(0, (sum, list) => sum + list.length);
-
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Mystery Heroes Ult Challenge'),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0),
-              child: Center(
-                child: Text(
-                  _user?.email ?? 'Guest',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-              ),
-            ),
-            IconButton(
-              icon: Icon(_user == null ? Icons.login : Icons.logout),
-              tooltip: _user == null ? 'Sign in with Google' : 'Sign out',
-              onPressed: _user == null ? _signInWithGoogle : _signOut,
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0),
-              child: Center(
-                child: Text(
-                  'Elapsed: ${_getTimeSinceReset()}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-              ),
-            ),
-            IconButton(
-              icon: Icon(_sortAlphabetically ? Icons.sort_by_alpha : Icons.category),
-              tooltip: _sortAlphabetically ? 'Sort by Role' : 'Sort Alphabetically',
-              onPressed: () => setState(() {
-                _sortAlphabetically = !_sortAlphabetically;
-              }),
-            ),
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: 'Reset Challenge',
-              onPressed: _resetChallenge,
-            ),
-          ],
-        ),
-        body: Row(
-          children: [
-            Expanded(
-              child: _buildHeroSectionByRole(
-                title: 'In Progress ($inProgressCount)',
-                heroesByRole: inProgressByRole,
-                isEmptyMessage: 'Challenge Complete!',
-              ),
-            ),
-            const VerticalDivider(width: 1, thickness: 1),
-            Expanded(
-              child: _buildHeroSectionByRole(
-                title: 'Complete ($completedCount)',
-                heroesByRole: completedByRole,
-                isEmptyMessage: 'No heroes completed yet.',
-              ),
-            ),
-          ],
-        ),
-      );
+    switch (_viewMode) {
+      case ViewMode.board:
+        return _buildBoardScaffold(context);
+      case ViewMode.alphabetical:
+        return _buildAlphabeticalScaffold();
+      case ViewMode.role:
+        return _buildRoleScaffold();
     }
+  }
+
+  Widget _buildBoardScaffold(BuildContext context) {
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: _buildAppBar(transparent: true),
+      body: HeroBoard(
+        title: 'Mystery Heroes',
+        topInset: MediaQuery.of(context).padding.top + _boardToolbarHeight,
+        columns: [
+          BoardColumn(label: 'TANKS', heroes: _tanks, tilesPerRow: 3),
+          BoardColumn(label: 'DPS', heroes: _damage, tilesPerRow: 5),
+          BoardColumn(label: 'SUPPORTS', heroes: _support, tilesPerRow: 3),
+        ],
+        completedHeroes: _completedHeroes,
+        onToggleHero: _toggleHeroInstant,
+        assetPathFor: _getHeroAssetPath,
+      ),
+    );
+  }
+
+  Widget _buildAlphabeticalScaffold() {
+    final displayHeroes = _getDisplayHeroes();
+    final inProgressHeroes =
+        displayHeroes.where((h) => !_completedHeroes.contains(h)).toList();
+    final completedHeroes =
+        displayHeroes.where((h) => _completedHeroes.contains(h)).toList();
+
+    return Scaffold(
+      appBar: _buildAppBar(),
+      body: Row(
+        children: [
+          Expanded(
+            child: _buildHeroSection(
+              title: 'In Progress (${inProgressHeroes.length})',
+              heroes: inProgressHeroes,
+              isEmptyMessage: 'Challenge Complete!',
+            ),
+          ),
+          const VerticalDivider(width: 1, thickness: 1),
+          Expanded(
+            child: _buildHeroSection(
+              title: 'Complete (${completedHeroes.length})',
+              heroes: completedHeroes,
+              isEmptyMessage: 'No heroes completed yet.',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoleScaffold() {
+    final inProgressByRole = _getHeroesByRole(true);
+    final completedByRole = _getHeroesByRole(false);
+    final inProgressCount =
+        inProgressByRole.values.fold<int>(0, (sum, list) => sum + list.length);
+    final completedCount =
+        completedByRole.values.fold<int>(0, (sum, list) => sum + list.length);
+
+    return Scaffold(
+      appBar: _buildAppBar(),
+      body: Row(
+        children: [
+          Expanded(
+            child: _buildHeroSectionByRole(
+              title: 'In Progress ($inProgressCount)',
+              heroesByRole: inProgressByRole,
+              isEmptyMessage: 'Challenge Complete!',
+            ),
+          ),
+          const VerticalDivider(width: 1, thickness: 1),
+          Expanded(
+            child: _buildHeroSectionByRole(
+              title: 'Complete ($completedCount)',
+              heroesByRole: completedByRole,
+              isEmptyMessage: 'No heroes completed yet.',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar({bool transparent = false}) {
+    return AppBar(
+      // On the board the title already sits on the paper banner, so the bar
+      // floats over the artwork carrying nothing but its controls.
+      title: transparent
+          ? const SizedBox.shrink()
+          : const Text('Mystery Heroes Ult Challenge'),
+      backgroundColor: transparent ? Colors.transparent : null,
+      foregroundColor: transparent ? Colors.white : null,
+      elevation: transparent ? 0 : null,
+      scrolledUnderElevation: transparent ? 0 : null,
+      toolbarHeight: transparent ? _boardToolbarHeight : null,
+      actions: [
+        // Deliberately no email or avatar: the board gets shown on stream, and
+        // the login/logout icon already says whether you are signed in.
+        IconButton(
+          icon: Icon(_user == null ? Icons.login : Icons.logout),
+          tooltip: _user == null ? 'Sign in with Google' : 'Sign out',
+          onPressed: _user == null ? _signInWithGoogle : _signOut,
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+          child: Center(
+            child: Text(
+              'Elapsed: ${_getTimeSinceReset()}',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ),
+        ),
+        IconButton(
+          icon: Icon(_viewModeIcon),
+          tooltip: _viewModeTooltip,
+          onPressed: _cycleViewMode,
+        ),
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          tooltip: 'Reset Challenge',
+          onPressed: _resetChallenge,
+        ),
+      ],
+    );
   }
 
   Widget _buildHeroSection({
