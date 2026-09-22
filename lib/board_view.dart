@@ -8,7 +8,7 @@ const String kMarkerFont = 'Marker';
 const Color _kBoardTop = Color(0xFF17417F);
 const Color _kBoardBottom = Color(0xFF071B3D);
 const Color _kTileBorder = Color(0xFF9FD0F0);
-const Color _kTileBorderDone = Color(0xFF4A5C72);
+const Color _kTileBorderGrey = Color(0xFF4A5C72);
 const Color _kPaper = Color(0xFFF2EFE6);
 const Color _kInk = Color(0xFF16181C);
 
@@ -28,7 +28,7 @@ class BoardColumn {
 }
 
 /// A whiteboard-style roster: portraits laid out in role columns, tapped to
-/// grey them out as complete.
+/// bring them into full colour as complete.
 class HeroBoard extends StatelessWidget {
   const HeroBoard({
     super.key,
@@ -263,10 +263,10 @@ class _HeroTile extends StatefulWidget {
 class _HeroTileState extends State<_HeroTile> {
   bool _hovered = false;
 
-  /// Colour matrix taking a portrait to "done" as [t] goes 0 -> 1: drained of
-  /// colour, dimmed, and with its blacks lifted so it still reads as grey
-  /// rather than sinking into the dark board behind it.
-  List<double> _fadeToDone(double t) {
+  /// Colour matrix taking a portrait to "still to do" as [t] goes 0 -> 1:
+  /// drained of colour, dimmed, and with its blacks lifted so it still reads as
+  /// grey rather than sinking into the dark board behind it.
+  List<double> _fadeToGrey(double t) {
     const lumR = 0.2126;
     const lumG = 0.7152;
     const lumB = 0.0722;
@@ -283,7 +283,7 @@ class _HeroTileState extends State<_HeroTile> {
 
   @override
   Widget build(BuildContext context) {
-    final done = widget.isComplete ? 1.0 : 0.0;
+    final grey = widget.isComplete ? 0.0 : 1.0;
     final radius = BorderRadius.circular(widget.size * 0.13);
 
     return Tooltip(
@@ -299,7 +299,7 @@ class _HeroTileState extends State<_HeroTile> {
             scale: _hovered ? 1.06 : 1.0,
             duration: const Duration(milliseconds: 140),
             child: TweenAnimationBuilder<double>(
-              tween: Tween<double>(begin: done, end: done),
+              tween: Tween<double>(begin: grey, end: grey),
               duration: const Duration(milliseconds: 280),
               curve: Curves.easeOut,
               builder: (context, t, _) {
@@ -309,7 +309,7 @@ class _HeroTileState extends State<_HeroTile> {
                   decoration: BoxDecoration(
                     borderRadius: radius,
                     border: Border.all(
-                      color: Color.lerp(_kTileBorder, _kTileBorderDone, t)!,
+                      color: Color.lerp(_kTileBorder, _kTileBorderGrey, t)!,
                       width: 2,
                     ),
                     boxShadow: [
@@ -323,7 +323,7 @@ class _HeroTileState extends State<_HeroTile> {
                   child: ClipRRect(
                     borderRadius: radius,
                     child: ColorFiltered(
-                      colorFilter: ColorFilter.matrix(_fadeToDone(t)),
+                      colorFilter: ColorFilter.matrix(_fadeToGrey(t)),
                       child: Image.asset(
                         widget.assetPath,
                         fit: BoxFit.cover,

@@ -271,7 +271,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
   }
 
   /// Heroes never change column on the board, so there is nothing to slide:
-  /// flip the state and let the tile fade itself to grey.
+  /// flip the state and let the tile fade itself into colour.
   void _toggleHeroInstant(String hero) {
     setState(() {
       if (!_completedHeroes.remove(hero)) {
