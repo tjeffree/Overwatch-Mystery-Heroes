@@ -7,7 +7,7 @@ A minimalist Flutter web app to track your progress through the **Overwatch Myst
 The Mystery Heroes Ultimate Challenge is a personal gaming goal where you:
 
 1. **Queue for Mystery Heroes** (where you get a random hero each spawn)
-2. **Pick a random hero** from the 53-hero roster
+2. **Pick a random hero** from the 54-hero roster
 3. **Earn their Ultimate Ability** during a match
 4. **Complete the challenge** when you've landed an ultimate with that hero
 5. **Repeat** until you've mastered all heroes!
@@ -16,11 +16,11 @@ Track your progress and see how long it takes you to complete the full roster.
 
 ## ✨ Features
 
-- **53-Hero Roster**: Complete Overwatch 2 hero list with role categories (Tank, Damage, Support)
+- **54-Hero Roster**: Complete Overwatch 2 hero list with role categories (Tank, Damage, Support)
 - **Visual Hero Cards**: Each hero displays their in-game image for easy identification
 - **Three Views**: cycle with the view button in the app bar —
   - **Board** (default): the whole roster on a whiteboard in TANKS / DPS / SUPPORTS
-    columns, with a `23/53` tally on the banner. Click a portrait to grey it out as
+    columns, with a `23/54` tally on the banner. Click a portrait to grey it out as
     complete; click again to undo.
   - **A–Z**: In Progress and Complete side by side, alphabetically
   - **By Role**: the same split, grouped into Tanks / Damage / Support
@@ -117,7 +117,7 @@ web/
   └── icons/             # App icons and favicon
 
 assets/
-  ├── *.webp             # Hero portrait images (53 heroes)
+  ├── *.webp             # Hero portrait images (54 heroes)
   └── fonts/             # Permanent Marker, the handwritten face on the board
 
 .github/workflows/
@@ -142,7 +142,7 @@ assets/
 
 **Damage (24)**: Anran, Ashe, Bastion, Cassidy, Echo, Emre, Freja, Genji, Hanzo, Junkrat, Mei, Pharah, Reaper, Shion, Sierra, Sojourn, Soldier: 76, Sombra, Symmetra, Torbjörn, Tracer, Vendetta, Venture, Widowmaker
 
-**Support (14)**: Ana, Baptiste, Brigitte, Illari, Jetpack Cat, Juno, Kiriko, Lifeweaver, Lúcio, Mercy, Mizuki, Moira, Wuyang, Zenyatta
+**Support (15)**: Ana, Baptiste, Brigitte, Doctrine, Illari, Jetpack Cat, Juno, Kiriko, Lifeweaver, Lúcio, Mercy, Mizuki, Moira, Wuyang, Zenyatta
 
 ## 📄 License
 

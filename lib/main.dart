@@ -54,7 +54,7 @@ class ChallengeScreen extends StatefulWidget {
 
 class _ChallengeScreenState extends State<ChallengeScreen> {
   // Full Overwatch 2 Roster (As of recent updates)
-  // Full 53-Hero Roster (Updated for 2026)
+  // Full 54-Hero Roster (Updated for 2026)
   final List<String> _tanks = [
     'D.Mon', 'D.Va', 'Domina', 'Doomfist', 'Hazard', 'Junker Queen', 'Mauga',
     'Orisa', 'Ramattra', 'Reinhardt', 'Roadhog', 'Sigma', 'Winston',
@@ -69,8 +69,9 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
   ];
 
   final List<String> _support = [
-    'Ana', 'Baptiste', 'Brigitte', 'Illari', 'Jetpack Cat', 'Juno', 'Kiriko',
-    'Lifeweaver', 'Lúcio', 'Mercy', 'Mizuki', 'Moira', 'Wuyang', 'Zenyatta'
+    'Ana', 'Baptiste', 'Brigitte', 'Doctrine', 'Illari', 'Jetpack Cat', 'Juno',
+    'Kiriko', 'Lifeweaver', 'Lúcio', 'Mercy', 'Mizuki', 'Moira', 'Wuyang',
+    'Zenyatta'
   ];
 
   late final List<String> _allHeroes = [..._tanks, ..._damage, ..._support];
